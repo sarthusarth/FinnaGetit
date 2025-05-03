@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savings Goal Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .slider-container {
+            margin-bottom: 16px;
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .category-name {
+            text-transform: capitalize;
+            font-weight: 500;
+        }
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider-wrapper input {
+            flex-grow: 1;
+        }
+        .slider-value {
+            font-weight: 600;
+        }
+        .monthly-savings {
+            text-align: right;
+            color: #27ae60;
+            font-size: 0.9em;
+            margin-top: 4px;
+        }
+        .total-savings-container {
+            background-color: #ebf5ff;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 24px 0;
+        }
+        .total-savings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .total-savings-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .goal-message {
+            text-align: center;
+            font-weight: 500;
+            margin-top: 12px;
+        }
+        .goal-reached {
+            color: #2980b9;
+        }
+        .goal-not-reached {
+            color: #e67e22;
+        }
+        .goal-no-savings {
+            color: #e74c3c;
+        }
+        .chart-container {
+            background-color: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-top: 24px;
+        }
+        .simulation-info {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Savings Goal Dashboard</h1>
+    
+    <div>
+        <h2>Monthly Spending Adjustments</h2>
+        <p>Move the sliders left to reduce your monthly spending and see how it affects your savings goal.</p>
+        
+        <div id="sliders-container">
+            <!-- Sliders will be generated here -->
+        </div>
+
+        <div class="total-savings-container">
+            <div class="total-savings-header">
+                <h3>Total Monthly Savings:</h3>
+                <span id="total-monthly-savings" class="total-savings-value">0 EUR.00</span>
+            </div>
+            <div id="goal-message" class="goal-message"></div>
+        </div>
+    </div>
+    
+    <div class="chart-container">
+        <h2>Your savings over time</h2>
+        <canvas id="savings-chart" height="300"></canvas>
+        <div class="simulation-info">Simulation includes random ±10% monthly variations to reflect real-world spending patterns</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.1.0/chartjs-plugin-annotation.min.js"></script>
+    <script>
+        // Initial data
+        const goalAmount = 1000;
+        const initialExpenses = {
+    "restaurants": 47.71,
+    "groceries": 18.19,
+    "coffee": 13.27,
+    "shopping": 18.71,
+    "other": 37.57
+};
+
+        // Current values (start at maximum/initial values)
+        const currentValues = { ...initialExpenses };
+    
+        // Maximum months to display on chart
+        const monthsLimit = 6;
+        
+        // Generate noise coefficients for each month (±10% variation)
+        // We generate these once at initialization to keep the "shape" of the noise consistent
+        const noiseCoefficients = Array.from({ length: monthsLimit }, () => 0.8 + Math.random() * 0.4);
+        
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 2
+            }).format(amount);
+        }
+        
+        // Calculate monthly savings
+        function calculateMonthlySavings() {
+            let totalSavings = 0;
+            
+            Object.keys(initialExpenses).forEach(category => {
+                const savings = initialExpenses[category] - currentValues[category];
+                totalSavings += savings;
+            });
+            
+            return totalSavings;
+        }
+        
+        // Initialize chart
+        let savingsChart;
+        function initializeChart() {
+            const ctx = document.getElementById('savings-chart').getContext('2d');
+            
+            // Get current month names
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth();
+            
+            // Create labels for the next 12 months
+            const monthLabels = Array.from({ length: monthsLimit }, (_, i) => {
+                const monthIndex = (currentMonth + i) % 12;
+                return months[monthIndex];
+            });
+            
+            savingsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: monthLabels,
+                    datasets: [{
+                        label: 'Accumulated Savings',
+                        data: Array(monthsLimit).fill(0),
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.1,
+                        pointRadius: 3,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Savings ($)'
+                            },
+                            ticks: {
+                                callback: value => value + ' EUR'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Months'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Savings: ' + formatCurrency(context.parsed.y);
+                                },
+                                title: function(context) {
+                                    return monthLabels[context[0].dataIndex];
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: goalAmount,
+                                    yMax: goalAmount,
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    borderWidth: 2,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        display: true,
+                                        content: 'Goal: ' + formatCurrency(goalAmount),
+                                        position: 'end',
+                                        backgroundColor: 'rgba(255, 99, 132, 0.8)'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update chart with new data including random variations
+        function updateChart() {
+            const baseMonthlySavings = calculateMonthlySavings();
+            const cumulativeSavings = [];
+            let goalReachedMonth = null;
+            let accumulatedSavings = 0;
+            
+            // Calculate cumulative savings with noisy monthly values
+            for (let month = 0; month < monthsLimit; month++) {
+                // Apply noise to this month's savings
+                const monthlySavingsWithNoise = baseMonthlySavings * noiseCoefficients[month];
+                
+                // Add to accumulated total
+                accumulatedSavings += monthlySavingsWithNoise;
+                cumulativeSavings.push(accumulatedSavings);
+                
+                // Check if goal is reached this month
+                if (goalReachedMonth === null && accumulatedSavings >= goalAmount) {
+                    goalReachedMonth = month + 1; // +1 because months are 1-indexed in display
+                }
+            }
+            
+            savingsChart.data.datasets[0].data = cumulativeSavings;
+            savingsChart.update();
+            
+            // Update total savings display (use the non-noisy base value)
+            document.getElementById('total-monthly-savings').textContent = formatCurrency(baseMonthlySavings);
+            
+            // Update goal message
+            const goalMessage = document.getElementById('goal-message');
+            
+            if (baseMonthlySavings <= 0) {
+                goalMessage.textContent = 'Adjust the sliders to start saving toward your goal.';
+                goalMessage.className = 'goal-message goal-no-savings';
+            } else if (goalReachedMonth) {
+                goalMessage.textContent = `You'll reach your goal of ${formatCurrency(goalAmount)} in approximately ${goalReachedMonth} ${goalReachedMonth === 1 ? 'month' : 'months'}!`;
+                goalMessage.className = 'goal-message goal-reached';
+            } else {
+                goalMessage.textContent = `With current savings rate, you won't reach your goal within ${monthsLimit} months.`;
+                goalMessage.className = 'goal-message goal-not-reached';
+            }
+        }
+        
+        // Create sliders
+        function createSliders() {
+            const slidersContainer = document.getElementById('sliders-container');
+            
+            Object.keys(initialExpenses).forEach(category => {
+                const value = initialExpenses[category];
+                
+                // Create slider container
+                const sliderContainer = document.createElement('div');
+                sliderContainer.className = 'slider-container';
+                
+                // Create header with label and value
+                const sliderHeader = document.createElement('div');
+                sliderHeader.className = 'slider-header';
+                
+                const categoryLabel = document.createElement('span');
+                categoryLabel.className = 'category-name';
+                categoryLabel.textContent = category;
+                
+                const valueDisplay = document.createElement('span');
+                valueDisplay.className = 'slider-value';
+                valueDisplay.id = `${category}-value`;
+                valueDisplay.textContent = formatCurrency(value);
+                
+                sliderHeader.appendChild(categoryLabel);
+                sliderHeader.appendChild(valueDisplay);
+                
+                // Create slider wrapper with min/max labels
+                const sliderWrapper = document.createElement('div');
+                sliderWrapper.className = 'slider-wrapper';
+                
+                const minLabel = document.createElement('span');
+                minLabel.textContent = '0 EUR';
+                minLabel.style.fontSize = '0.9em';
+                minLabel.style.color = '#777';
+                
+                const maxLabel = document.createElement('span');
+                maxLabel.textContent = formatCurrency(value);
+                maxLabel.style.fontSize = '0.9em';
+                maxLabel.style.color = '#777';
+                
+                const slider = document.createElement('input');
+                slider.type = 'range';
+                slider.min = 0;
+                slider.max = value;
+                slider.step = 0.01;
+                slider.value = value;
+                slider.id = `${category}-slider`;
+                
+                sliderWrapper.appendChild(minLabel);
+                sliderWrapper.appendChild(slider);
+                sliderWrapper.appendChild(maxLabel);
+                
+                // Create savings display
+                const savingsDisplay = document.createElement('div');
+                savingsDisplay.className = 'monthly-savings';
+                savingsDisplay.id = `${category}-savings`;
+                savingsDisplay.textContent = `Monthly Savings: ${formatCurrency(0)}`;
+                
+                // Add all elements to container
+                sliderContainer.appendChild(sliderHeader);
+                sliderContainer.appendChild(sliderWrapper);
+                sliderContainer.appendChild(savingsDisplay);
+                
+                // Add to sliders container
+                slidersContainer.appendChild(sliderContainer);
+                
+                // Add event listener
+                slider.addEventListener('input', function() {
+                    const newValue = parseFloat(this.value);
+                    currentValues[category] = newValue;
+                    
+                    // Update value display
+                    valueDisplay.textContent = formatCurrency(newValue);
+                    
+                    // Update savings display
+                    const savings = initialExpenses[category] - newValue;
+                    savingsDisplay.textContent = `Monthly Savings: ${formatCurrency(savings)}`;
+                    
+                    // Update chart
+                    updateChart();
+                });
+            });
+        }
+        
+
+    // Initialize everything
+    document.addEventListener('DOMContentLoaded', function() {
+        createSliders();
+        initializeChart();
+        
+        // Set slider positions from research_stage
+        const sliderPositions = {
+            'restaurants': 19.084000000000003,
+            'groceries': 16.371000000000002,
+            'coffee': 3.981,
+            'shopping': 11.225999999999999,
+            'other': 18.785,
+        };
+        
+        // Apply slider positions
+        Object.keys(sliderPositions).forEach(category => {
+            const slider = document.getElementById(`${category}-slider`);
+            if (slider) {
+                slider.value = sliderPositions[category];
+                currentValues[category] = sliderPositions[category];
+                
+                // Update displays
+                document.getElementById(`${category}-value`).textContent = formatCurrency(sliderPositions[category]);
+                const savings = initialExpenses[category] - sliderPositions[category];
+                document.getElementById(`${category}-savings`).textContent = `Monthly Savings: ${formatCurrency(savings)}`;
+            }
+        });
+        
+        // Update chart with initial values
+        updateChart();
+    });
+    
+    </script>
+
+    <div class="plan-description-container" style="margin-top: 24px; padding: 16px; background-color: #f8f9fa; border-radius: 8px;">
+        <h2>Your Savings Plan</h2>
+        <p>Hey there, future saver! Let's get real for a sec - saving €1000 in 6 months is a great goal, and I'm here to help you crush it!<br><br>First, the plan: we're aiming to cut back on variable expenses. Think of it like a game - we're reducing 'restaurants' by 60%, 'groceries' by 10%, and so on. This will free up some cash for your savings goal. Don't worry, it's not about depriving yourself, but about making conscious choices.<br><br>Now, about those fixed and scheduled payments... see if you can negotiate a better deal on your fixed expenses, like your rent or utilities. And for scheduled payments, consider consolidating or refinancing to lower the amount.<br><br>Here's the fun part: our simulation will show you how your savings will grow over time, with some random twists to reflect real-life spending patterns. It's like a virtual crystal ball!<br><br>Remember, nobody's perfect, and that's okay! We'll work together to get you to your goal. And what's that goal again? Ah yes, saving €1000 in 6 months! Whether it's for a dream trip, a big purchase, or just a safety net, we'll get you there. Don't worry, together we will get you there!</p>
+    </div>
+    
+</body>
+</html>
