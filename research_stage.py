@@ -156,14 +156,16 @@ def research_stage(goal: str, duration: int, amount: float, monetary_account_id:
         params=pagination.url_params_count_only
     ).value
 
+    print("MAKING BUNQ API CALLS AND LLM ANALYSIS")
     fixed_payments = get_fixed_payments(monetary_account_id)
     variable_payments = get_variale_payments(monetary_account_id)
     scheduled_payments = get_scheduled_payments(monetary_account_id)
 
+    print("GETTING SLIDER POSITIONS")
     # Get the slider positions ie, savings per category
     slider_positions, percent_decrease_per_category = get_slider_positions(duration, amount,variable_payments,  monetary_account_id)
 
-
+    print("GENERATING PLAN DESCRIPTION")
     # Now we have all the information, generate the full text
     full_info_for_result = f"""
     You are a personal datascientist agent for the Bunq app. You help users realise their dreams by getting them closer to their
@@ -192,7 +194,7 @@ def research_stage(goal: str, duration: int, amount: float, monetary_account_id:
 
     # Generate the plan description
     plan_description = get_plan_description(full_info_for_result)
-    print("PROMPT", full_info_for_result)
+    # print("PROMPT", full_info_for_result)
     return {
         "fixed_expenses": fixed_payments,
         "variable_expenses": variable_payments,

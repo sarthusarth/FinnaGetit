@@ -15,13 +15,19 @@ def generate_dashboard(goal, duration, amount, monetary_account_id=2108197):
     Returns:
         str: HTML content of the dashboard with populated values
     """
-    # Run research_stage and get results
+    # Run research_stage 
+    print(f"Running research_stage for goal")
+    print(f"Goal: {goal}")
+    print(f"Duration: {duration}")
+    print(f"Amount: {amount}")
+    print(f"Monetary account id: {monetary_account_id}")
     result = research_stage(goal, duration, amount, monetary_account_id)
+
+    print("Update HTML")
     
     # Extract required values from the result
-    goal_amount = 1000  # From research_stage parameters
     variable_expenses = result["variable_expenses"]
-    duration = 6  # From research_stage parameters
+
     slider_positions = result["slider_positions"]
     
     # Read the vanilla dashboard HTML template
@@ -31,7 +37,7 @@ def generate_dashboard(goal, duration, amount, monetary_account_id=2108197):
     # Replace initial values in JavaScript
     html_content = html_content.replace(
         "const goalAmount = 200;",
-        f"const goalAmount = {goal_amount};"
+        f"const goalAmount = {amount};"
     )
     
     # Format variable expenses for JavaScript
@@ -116,14 +122,19 @@ def generate_dashboard(goal, duration, amount, monetary_account_id=2108197):
     
     return html_content
 
-def save_dashboard():
+def save_dashboard(goal, duration, amount, monetary_account_id):
     """
     Generates and saves the dashboard HTML to a file.
     """
-    html_content = generate_dashboard()
+    html_content = generate_dashboard(goal, duration, amount, monetary_account_id)
     with open("./dashboard_filled.html", "w") as file:
         file.write(html_content)
     print("Dashboard generated at './dashboard_filled.html'")
 
 if __name__ == "__main__":
-    save_dashboard()
+    save_dashboard(
+        goal="Buy a new car",
+        duration=12,
+        amount=10000,
+        monetary_account_id=2108197
+    )

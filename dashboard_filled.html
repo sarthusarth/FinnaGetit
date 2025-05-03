@@ -120,20 +120,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.1.0/chartjs-plugin-annotation.min.js"></script>
     <script>
         // Initial data
-        const goalAmount = 1000;
+        const goalAmount = 10000;
         const initialExpenses = {
-    "restaurants": 47.71,
+    "restaurants": 47.01,
     "groceries": 18.19,
     "coffee": 13.27,
     "shopping": 18.71,
-    "other": 37.57
+    "other": 2.0
 };
 
         // Current values (start at maximum/initial values)
         const currentValues = { ...initialExpenses };
     
         // Maximum months to display on chart
-        const monthsLimit = 6;
+        const monthsLimit = 12;
         
         // Generate noise coefficients for each month (±10% variation)
         // We generate these once at initialization to keep the "shape" of the noise consistent
@@ -380,11 +380,11 @@
         
         // Set slider positions from research_stage
         const sliderPositions = {
-            'restaurants': 19.084000000000003,
+            'restaurants': 18.804,
             'groceries': 16.371000000000002,
             'coffee': 3.981,
             'shopping': 11.225999999999999,
-            'other': 18.785,
+            'other': 1.0,
         };
         
         // Apply slider positions
@@ -409,7 +409,7 @@
 
     <div class="plan-description-container" style="margin-top: 24px; padding: 16px; background-color: #f8f9fa; border-radius: 8px;">
         <h2>Your Savings Plan</h2>
-        <p>Hey there, future saver! Let's get real for a sec - saving €1000 in 6 months is a great goal, and I'm here to help you crush it!<br><br>First, the plan: we're aiming to cut back on variable expenses. Think of it like a game - we're reducing 'restaurants' by 60%, 'groceries' by 10%, and so on. This will free up some cash for your savings goal. Don't worry, it's not about depriving yourself, but about making conscious choices.<br><br>Now, about those fixed and scheduled payments... see if you can negotiate a better deal on your fixed expenses, like your rent or utilities. And for scheduled payments, consider consolidating or refinancing to lower the amount.<br><br>Here's the fun part: our simulation will show you how your savings will grow over time, with some random twists to reflect real-life spending patterns. It's like a virtual crystal ball!<br><br>Remember, nobody's perfect, and that's okay! We'll work together to get you to your goal. And what's that goal again? Ah yes, saving €1000 in 6 months! Whether it's for a dream trip, a big purchase, or just a safety net, we'll get you there. Don't worry, together we will get you there!</p>
+        <p>Hey there, future saver! Let's get real for a sec - saving €10,000 in 12 months is a big goal, but I've got your back!<br><br>First, the numbers: you need to save around €833/month. To make that happen, we're going to tweak your variable expenses. Think of it like a recipe: we're reducing the ingredients that are making your expenses a bit too rich.<br><br>Here's the plan:<br><br>* Cut back on restaurants by 60% (that's €18.80 less)<br>* Trim groceries by 10% (€1.82 less)<br>* Reduce coffee runs by 70% (€3.98 less)<br>* Shop a bit less, saving 40% (€11.23 less)<br>* And, other expenses get a 50% haircut (€1 less)<br><br>These changes will free up some cash for your savings goal. Now, about those fixed and scheduled payments... see if you can negotiate a better deal on your fixed expenses, like your rent or utilities. And, consider consolidating your scheduled payments to reduce fees.<br><br>Here's the fun part: our simulation includes some random twists to reflect your real spending habits. It's like a game! We'll work together to stay on track.<br><br>Remember, nobody's perfect, and that's okay! We'll take it one step at a time. You're saving for a reason - what is it? A dream trip to Vietnam, perhaps? Whatever it is, I'm excited to help you get there! Don't worry, together we will get you there!</p>
     </div>
     
 </body>
