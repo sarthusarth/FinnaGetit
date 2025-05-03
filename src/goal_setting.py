@@ -122,14 +122,17 @@ def calculate_savings_plan(goal_amount, time_frame_months, goal="Savings Plan Tr
         </div>
         """
         
-        # Save the goal to persistent storage
+        # Save the goal to persistent storage - for demo, we'll overwrite the existing goal
         goal_data = {
+            "id": 1,  # Always use ID 1 for the single goal
             "goal_amount": round(goal_amount, 2),
             "time_frame_months": time_frame_months,
             "current_savings": round(current_savings, 2),
-            "monthly_savings": round(monthly_savings, 2)
+            "monthly_savings": round(monthly_savings, 2),
+            "created_at": datetime.now().isoformat()
         }
-        save_goal(goal_data)
+        # For demo, directly overwrite the goal instead of adding to a list
+        save_goal(goal_data, overwrite=True)
         
         return html
     except Exception as e:
@@ -213,16 +216,16 @@ def tab_goal_setting():
 # Tab content for Goal Plan
 @app.get("/tab/goal_plan")
 def tab_goal_plan():
-    # Get all saved goals for display
+    # Get the single saved goal
     all_goals = load_goals()
     
-    # Default content if no goals have been created yet
+    # Default content if no goal has been created yet
     if not all_goals:
         return Div(id="app-content", cls="flex-1 flex flex-col overflow-hidden")(
             Div(cls="flex flex-col items-center justify-center p-10 text-center h-64 bg-white rounded-lg shadow border border-gray-200 m-4")(
                 Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-gray-500 mb-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>'),
-                Div(cls="text-xl font-semibold text-gray-800 mb-3")("No Goals Created Yet"),
-                Div(cls="text-gray-600 max-w-md")("Chat with the AI assistant in the Goal Setting tab to create your first financial plan. Set a savings goal and timeframe to visualize your path to success."),
+                Div(cls="text-xl font-semibold text-gray-800 mb-3")("No Goal Created Yet"),
+                Div(cls="text-gray-600 max-w-md")("Chat with the AI assistant in the Goal Setting tab to create your financial plan. Set a savings goal and timeframe to visualize your path to success."),
                 Button("Go to Goal Setting", 
                     cls="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors",
                     hx_get="/tab/goal_setting",
@@ -232,95 +235,77 @@ def tab_goal_plan():
             )
         )
     else:
-        # Get the most recent goal to display as primary visualization
-        latest_goal = all_goals[0] if all_goals else None
+        # Get the single goal to display
+        goal = all_goals[0]
         
-        # Create visualization for the latest goal
-        if latest_goal:
-            # Extract data for visualization
-            goal_amount = latest_goal["goal_amount"]
-            time_frame_months = latest_goal["time_frame_months"]
-            current_savings = latest_goal.get("current_savings", 0)
-            
-            # Generate the dashboard HTML directly
-            latest_plan_visualization = calculate_savings_plan(
-                goal_amount=goal_amount,
-                time_frame_months=time_frame_months,
-                current_savings=current_savings
-            )
-        else:
-            latest_plan_visualization = None
+        # Extract data for visualization
+        goal_amount = goal["goal_amount"]
+        time_frame_months = goal["time_frame_months"]
+        current_savings = goal.get("current_savings", 0)
         
-        # Wrap the goal plan content in the app-content div
+        # Generate the dashboard HTML directly
+        goal_visualization = calculate_savings_plan(
+            goal_amount=goal_amount,
+            time_frame_months=time_frame_months,
+            current_savings=current_savings
+        )
+        
+        # Simplified UI for demo mode with a single goal
         return Div(id="app-content", cls="flex-1 flex flex-col overflow-hidden")(
             # Header with buttons
-            Div(cls="flex justify-between p-4 sticky top-0 bg-white z-10 border-b border-gray-100")(
-                Button("Open Interactive Dashboard", 
-                    cls="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center",
-                    onclick="window.open('/dashboard', '_blank')")(
-                    Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" /></svg>'),
-                    "Open Dashboard"
-                ),
-                Button("Create New Goal", 
-                    cls="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm",
-                    hx_get="/tab/goal_setting",
-                    hx_target="#app-content",
-                    hx_swap="outerHTML",
-                    hx_push_url="false")
+            Div(cls="flex justify-end p-4 sticky top-0 bg-white z-10 border-b border-gray-100")(
+                Div(cls="flex items-center gap-2")(
+                    Button("Create New Goal", 
+                        cls="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm",
+                        hx_get="/tab/goal_setting",
+                        hx_target="#app-content",
+                        hx_swap="outerHTML",
+                        hx_push_url="false"),
+                    Button(
+                        cls="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm flex items-center",
+                        hx_post="/delete_goal",
+                        hx_vals='{"goal_id": 1}',
+                        hx_target="#app-content",
+                        hx_swap="outerHTML",
+                        hx_confirm="Are you sure you want to delete your goal?"
+                    )(
+                        Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>'),
+                        "Delete"
+                    )
+                )
             ),
             
-            # Scrollable content area
-            Div(cls="flex-1 overflow-y-auto")(
-                # Latest goal visualization
-                Div(cls="p-4 mb-6")(
-                    Div(cls="flex justify-between items-center mb-4")(
-                        Div(cls="text-lg font-semibold text-neutral-dark")("Your Latest Savings Plan"),
-                        Div(cls="text-xs text-gray-500")("Created on " + datetime.fromisoformat(latest_goal.get("created_at", datetime.now().isoformat())).strftime("%b %d, %Y"))
-                    ),
-                    Raw(latest_plan_visualization),
-                    Div(cls="text-xs text-neutral-medium mt-4")("All your goals are saved automatically.")
-                ) if latest_goal else Div(),
+            # Goal visualization
+            Div(cls="p-4 mb-6")(
+                Div(cls="flex justify-between items-center mb-4")(
+                    Div(cls="text-lg font-semibold text-neutral-dark")("Your Savings Plan"),
+                    Div(cls="text-xs text-gray-500")("Created on " + datetime.fromisoformat(goal.get("created_at", datetime.now().isoformat())).strftime("%b %d, %Y"))
+                ),
+                Raw(goal_visualization),
                 
-                # List of all goals with delete functionality
-                Div(cls="p-4 border-t border-gray-200")(
-                    Div(cls="text-md font-semibold mb-3 text-gray-900")("All Your Goals"),
-                    *[Div(cls="bg-white rounded-lg p-4 mb-3 border border-gray-200 shadow-sm")(
-                        Div(cls="flex justify-between items-center")(
-                            Div(cls="font-medium text-gray-900")("Goal #" + str(goal.get("id", i+1))),
-                            Div(cls="flex items-center")(
-                                Div(cls="text-xs text-gray-500 mr-3")(datetime.fromisoformat(goal.get("created_at", datetime.now().isoformat())).strftime("%b %d, %Y at %H:%M")),
-                                Button(
-                                    Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>'),
-                                    cls="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50",
-                                    hx_post="/delete_goal",
-                                    hx_vals=f'{{"goal_id": {goal.get("id", i+1)}}}',
-                                    hx_target="#app-content",
-                                    hx_swap="outerHTML",
-                                    hx_confirm=f"Are you sure you want to delete Goal #{goal.get('id', i+1)}?",
-                                )
-                            )
-                        ),
-                        Div(cls="grid grid-cols-2 gap-2 mt-2")(
-                            Div(cls="text-xs text-gray-600")("Goal Amount:"),
-                            Div(cls="text-xs font-medium text-gray-900")(f"€{goal['goal_amount']:,.2f}"),
-                            
-                            Div(cls="text-xs text-gray-600")("Time Frame:"),
-                            Div(cls="text-xs font-medium text-gray-900")(f"{goal['time_frame_months']} months"),
-                            
-                            Div(cls="text-xs text-gray-600")("Monthly Savings:"),
-                            Div(cls="text-xs font-medium text-gray-900")(f"€{goal['monthly_savings']:,.2f}"),
-                            
-                            Div(cls="text-xs text-gray-600")("Current Savings:"),
-                            Div(cls="text-xs font-medium text-gray-900")(f"€{goal.get('current_savings', 0):,.2f}")
-                        ),
-                        # View details button
-                        Button("View Details", 
-                            cls="mt-3 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium rounded transition-colors",
-                            hx_post="/view_goal",
-                            hx_vals=f'{{"goal_id": {goal.get("id", i+1)}}}',
-                            hx_target="#app-content",
-                            hx_swap="outerHTML")
-                    ) for i, goal in enumerate(all_goals)]
+                # Goal details in a nice format
+                Div(cls="bg-white rounded-lg p-4 mt-4 border border-gray-200 shadow-sm")(
+                    Div(cls="text-xl font-bold mb-4 text-gray-800 border-b pb-2")("Goal Details"),
+                    Div(cls="grid grid-cols-2 gap-3 mb-4")(
+                        Div(cls="text-sm text-gray-600")("Goal Amount:"),
+                        Div(cls="text-sm font-medium text-gray-900")(f"€{goal['goal_amount']:,.2f}"),
+                        
+                        Div(cls="text-sm text-gray-600")("Time Frame:"),
+                        Div(cls="text-sm font-medium text-gray-900")(f"{goal['time_frame_months']} months"),
+                        
+                        Div(cls="text-sm text-gray-600")("Monthly Savings:"),
+                        Div(cls="text-sm font-medium text-gray-900")(f"€{goal['monthly_savings']:,.2f}"),
+                        
+                        Div(cls="text-sm text-gray-600")("Current Savings:"),
+                        Div(cls="text-sm font-medium text-gray-900")(f"€{goal.get('current_savings', 0):,.2f}"),
+                        
+                        Div(cls="text-sm text-gray-600")("Progress:"),
+                        Div(cls="text-sm font-medium text-gray-900")(f"{min(100, round((current_savings / goal_amount) * 100))}%")
+                    ),
+                    # Add View more details button
+                    Button("View Dashboard", 
+                        cls="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors",
+                        onclick="window.location.href='/dashboard'")
                 )
             )
         )
@@ -335,98 +320,7 @@ def handle_delete_goal(goal_id:int):
     # Redirect back to the goal plan tab
     return tab_goal_plan()
 
-# Add endpoint to view a specific goal's details
-@app.post("/view_goal") 
-def view_goal(goal_id:int):
-    """View details of a specific goal"""
-    # Get all goals
-    all_goals = load_goals()
-    
-    # Find the requested goal
-    selected_goal = None
-    for goal in all_goals:
-        if goal.get("id") == goal_id:
-            selected_goal = goal
-            break
-    
-    if not selected_goal:
-        # If goal not found, return to the goals list
-        return tab_goal_plan()
-    
-    # Extract goal details
-    goal_amount = selected_goal["goal_amount"]
-    time_frame_months = selected_goal["time_frame_months"]
-    current_savings = selected_goal.get("current_savings", 0)
-    monthly_savings = selected_goal["monthly_savings"]
-    
-    # Generate the visualization directly from calculate_savings_plan
-    goal_visualization = calculate_savings_plan(
-        goal_amount=goal_amount,
-        time_frame_months=time_frame_months,
-        current_savings=current_savings
-    )
-    
-    # Return the detailed view
-    return Div(id="app-content", cls="flex-1 flex flex-col overflow-hidden")(
-        # Back button and actions - make it sticky
-        Div(cls="flex justify-between items-center p-4 sticky top-0 bg-white z-10 border-b border-gray-100")(
-            Button("← Back to All Goals", 
-                cls="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors text-sm",
-                hx_get="/tab/goal_plan",
-                hx_target="#app-content",
-                hx_swap="outerHTML",
-                hx_push_url="false"),
-            Div(cls="flex items-center gap-2")(
-                Button(cls="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm flex items-center",
-                    onclick="window.open('/dashboard', '_blank')")(
-                    Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" /></svg>'),
-                    "Open Dashboard"
-                ),
-                Button(cls="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm flex items-center",
-                    hx_post="/delete_goal",
-                    hx_vals=f'{{"goal_id": {goal_id}}}',
-                    hx_target="#app-content",
-                    hx_swap="outerHTML",
-                    hx_confirm=f"Are you sure you want to delete Goal #{goal_id}?")(
-                    Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>'),
-                    "Delete Goal"
-                )
-            )
-        ),
-        
-        # Scrollable content area
-        Div(cls="flex-1 overflow-y-auto")(
-            # Goal details header
-            Div(cls="p-4 mb-4")(
-                Div(cls="text-lg font-semibold mb-2 text-gray-900")(f"Goal #{goal_id} Details"),
-                Div(cls="text-xs text-gray-500")(f"Created on {datetime.fromisoformat(selected_goal.get('created_at', datetime.now().isoformat())).strftime('%b %d, %Y at %H:%M')}")
-            ),
-            
-            # Goal visualization
-            Div(cls="p-4 mb-6")(
-                Raw(goal_visualization)
-            ),
-            
-            # Progress statistics 
-            Div(cls="p-4 border-t border-gray-200")(
-                Div(cls="text-md font-semibold mb-3 text-gray-900")("Goal Progress"),
-                Div(cls="grid grid-cols-2 gap-4")(
-                    Div(cls="bg-white rounded-lg p-4 border border-gray-200 shadow-sm")(
-                        Div(cls="text-sm text-gray-600")("Current Progress"),
-                        Div(cls="text-xl font-semibold text-blue-600 mt-1")(f"{min(100, round((current_savings / goal_amount) * 100))}%"),
-                        Div(cls="w-full bg-gray-200 rounded-full h-2.5 mt-2")(
-                            Div(cls=f"bg-blue-600 h-2.5 rounded-full", style=f"width: {min(100, round((current_savings / goal_amount) * 100))}%")
-                        )
-                    ),
-                    Div(cls="bg-white rounded-lg p-4 border border-gray-200 shadow-sm")(
-                        Div(cls="text-sm text-gray-600")("Time Remaining"),
-                        Div(cls="text-xl font-semibold text-blue-600 mt-1")(f"{time_frame_months} months"),
-                        Div(cls="text-xs text-gray-500 mt-2")(f"Target completion: {(datetime.fromisoformat(selected_goal.get('created_at', datetime.now().isoformat())) + datetime.timedelta(days=30*time_frame_months)).strftime('%b %Y')}")
-                    )
-                )
-            )
-        )
-    )
+# For demo mode, we don't need the view_goal endpoint since we only have one goal
 
 def parse_options(response):
     """Parse options from model response if they exist"""
@@ -860,22 +754,28 @@ def select_option(option:str, messages:list[str]=None):
 # Add an endpoint to serve the dashboard HTML file
 @app.get("/dashboard")
 def serve_dashboard():
+    """View details of the financial goal in an interactive dashboard"""
     try:
         with open("./dashboard_filled.html", "r") as file:
             content = file.read()
         return HTMLResponse(content=content)
     except FileNotFoundError:
         # If the file doesn't exist, generate a default dashboard
-        goals = load_goals()
-        if goals:
-            latest_goal = goals[0]
-            goal_amount = latest_goal["goal_amount"]
-            time_frame_months = latest_goal["time_frame_months"]
-            current_savings = latest_goal.get("current_savings", 0)
-            monthly_savings = latest_goal["monthly_savings"]
+        # Get the single goal if it exists
+        all_goals = load_goals()
+        if all_goals:
+            goal = all_goals[0]
+            goal_amount = goal["goal_amount"]
+            time_frame_months = goal["time_frame_months"]
+            current_savings = goal.get("current_savings", 0)
+            monthly_savings = goal["monthly_savings"]
             
             # Generate a new dashboard
-            dashboard_html = generate_dashboard(goal_amount, time_frame_months, current_savings, monthly_savings)
+            dashboard_html = generate_dashboard(
+                goal="Saving Plan",
+                duration=time_frame_months,
+                amount=goal_amount
+            )
             
             # Save it to file
             with open("./dashboard_filled.html", "w") as file:
@@ -883,8 +783,62 @@ def serve_dashboard():
                 
             return HTMLResponse(content=dashboard_html)
         else:
-            # No goals found, return a simple message
-            return HTMLResponse(content="<html><body><h1>No dashboard available</h1><p>Please create a goal first.</p></body></html>")
+            # No goal found, return a simple message
+            return HTMLResponse(content="""
+            <html>
+            <head>
+                <title>No Dashboard Available</title>
+                <style>
+                    body {
+                        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        margin: 0;
+                        background-color: #f9fafb;
+                        color: #111827;
+                    }
+                    .container {
+                        text-align: center;
+                        padding: 2rem;
+                        background-color: white;
+                        border-radius: 0.5rem;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        max-width: 500px;
+                    }
+                    h1 {
+                        font-size: 1.5rem;
+                        margin-bottom: 1rem;
+                    }
+                    p {
+                        margin-bottom: 1.5rem;
+                        color: #4b5563;
+                    }
+                    .button {
+                        padding: 0.5rem 1rem;
+                        background-color: #2563eb;
+                        color: white;
+                        border-radius: 0.375rem;
+                        text-decoration: none;
+                        font-weight: 500;
+                        transition: background-color 0.2s;
+                    }
+                    .button:hover {
+                        background-color: #1d4ed8;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>No Dashboard Available</h1>
+                    <p>Please create a goal first in the application.</p>
+                    <a href="/" class="button">Return to App</a>
+                </div>
+            </body>
+            </html>
+            """)
 
 # The main screen - entry point of the application
 @app.get
@@ -898,8 +852,8 @@ def index():
             <div class="flex items-center">
                 <div class="py-1"><svg class="h-6 w-6 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
                 <div>
-                    <p class="font-bold">Goals loaded!</p>
-                    <p class="text-sm">Your saved goals have been loaded.</p>
+                    <p class="font-bold">Goal loaded!</p>
+                    <p class="text-sm">Your saved goal has been loaded. (Demo Mode)</p>
                 </div>
                 <div class="ml-4">
                     <button onclick="this.parentElement.parentElement.remove()" class="text-blue-600 hover:text-blue-800 transition-colors">✕</button>
@@ -932,4 +886,13 @@ def index():
     )
     return Titled('Financial Goal Planner', page)
 
-serve()
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Financial Goal Planner')
+    parser.add_argument('--port', type=int, default=8000, help='Port to run the server on')
+    args = parser.parse_args()
+    
+    serve(port=args.port)
+else:
+    serve()
