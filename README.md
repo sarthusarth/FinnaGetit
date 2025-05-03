@@ -1,8 +1,14 @@
 # FinnaGetit - Financial Goal Planner
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 
-A modern, AI-powered financial goal planning application that helps users set, track, and achieve their financial goals through intelligent conversation and interactive visualizations.
+> FinnaGetit is a modern, AI-powered financial goal planning application that helps users set, track, and achieve their financial goals through intelligent conversation and interactive visualizations.
 
-## Features
+## 📸 Screenshots
+
+*Coming soon*
+
+## ✨ Features
 
 - **Conversational Goal Setting**: Chat with an AI assistant to define financial goals in natural language
 - **Smart Cost Estimation**: The AI helps estimate the cost of various goals based on user input
@@ -10,7 +16,7 @@ A modern, AI-powered financial goal planning application that helps users set, t
 - **Goal Management**: Save, view, and delete multiple financial goals
 - **Personalized Savings Plans**: Get customized monthly savings targets based on goal amount and timeframe
 
-## Technology Stack
+## 🛠️ Technology Stack
 
 - **Frontend**: FastHTML, Tailwind CSS, HTMX for dynamic interactions
 - **Backend**: Python
@@ -18,7 +24,7 @@ A modern, AI-powered financial goal planning application that helps users set, t
 - **Visualization**: Custom dashboard with interactive elements
 - **Data Storage**: Local JSON-based storage for goals
 
-## Setup
+## 🚀 Setup
 
 ### Prerequisites
 
@@ -33,7 +39,18 @@ A modern, AI-powered financial goal planning application that helps users set, t
    cd FinnaGetit
    ```
 
-2. Install the required dependencies:
+2. Create and activate a virtual environment (recommended):
+   ```bash
+   # For Mac/Linux
+   python -m venv venv
+   source venv/bin/activate
+   
+   # For Windows
+   python -m venv venv
+   venv\Scripts\activate
+   ```
+
+3. Install the required dependencies:
    ```bash
    pip install fasthtml anthropic
    ```
@@ -82,7 +99,7 @@ Alternatively, you can modify the `config.py` file:
 ANTHROPIC_API_KEY = "your-api-key-here"
 ```
 
-## Running the Application
+## 🏃‍♂️ Running the Application
 
 Start the application with:
 
@@ -90,7 +107,7 @@ Start the application with:
 python goal_setting.py
 ```
 
-## How to Use
+## 📖 How to Use
 
 1. **Setting a Goal**: 
    - Navigate to the "Goal Setting" tab
@@ -108,7 +125,7 @@ python goal_setting.py
    - Delete unwanted goals using the delete button
    - Create new goals by navigating back to the "Goal Setting" tab
 
-## Example Workflow
+## 🌟 Example Workflow
 
 1. User: "I want to save for a trip to Japan next year"
 2. AI: "Great! How long are you planning to stay in Japan?"
@@ -120,7 +137,7 @@ python goal_setting.py
 6. AI: *generates savings plan with monthly targets*
 7. System: *displays interactive visualization and automatically switches to the "My Goals" tab*
 
-## Project Structure
+## 📁 Project Structure
 
 - `goal_setting.py`: Main application file with UI and business logic
 - `prompts.py`: Contains prompt templates for the AI assistant
@@ -129,10 +146,38 @@ python goal_setting.py
 - `theme.py`: Contains styling information
 - `config.py`: Configuration for API keys
 
-## Future Enhancements
+## 🔮 Future Enhancements
 
 - Integration with banking APIs for real-time financial data
 - Multi-currency support
 - Advanced financial projections and what-if scenarios
 - Mobile application version
 - Export functionality for savings plans
+
+## ❓ Troubleshooting
+
+### Common Issues
+
+- **API Key not recognized**: Ensure your Anthropic API key is correctly set up in your environment variables or `config.py` file.
+- **ImportError**: Make sure all dependencies are installed by running `pip install fasthtml anthropic`.
+- **Application not starting**: Check that you're using Python 3.7 or newer.
+
+## 👥 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgements
+
+- [Anthropic](https://www.anthropic.com/) for their powerful Claude API
+- [FastHTML](https://fasthtml.org/) for the frontend framework
+- All contributors who have helped make this project better
