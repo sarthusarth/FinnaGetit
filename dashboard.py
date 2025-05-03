@@ -122,19 +122,14 @@ def generate_dashboard(goal, duration, amount, monetary_account_id=2108197):
     
     return html_content
 
-def save_dashboard(goal, duration, amount, monetary_account_id):
+def save_dashboard():
     """
     Generates and saves the dashboard HTML to a file.
     """
-    html_content = generate_dashboard(goal, duration, amount, monetary_account_id)
+    html_content = generate_dashboard()
     with open("./dashboard_filled.html", "w") as file:
         file.write(html_content)
     print("Dashboard generated at './dashboard_filled.html'")
 
 if __name__ == "__main__":
-    save_dashboard(
-        goal="Buy a new car",
-        duration=12,
-        amount=10000,
-        monetary_account_id=2108197
-    )
+    save_dashboard()

@@ -10,6 +10,7 @@ from config import ANTHROPIC_API_KEY
 from goal_storage import save_goal, load_goals, get_latest_goal, delete_goal
 from datetime import datetime
 from dashboard import generate_dashboard
+from starlette.responses import HTMLResponse
 
 # Set the environment variable from the config
 os.environ['ANTHROPIC_API_KEY'] = ANTHROPIC_API_KEY
@@ -35,22 +36,49 @@ model = "claude-3-5-sonnet-20240620"
 def calculate_savings_plan(goal_amount, time_frame_months, goal="Savings Plan Trip", current_savings=0):
     """Calculate the required monthly savings to reach a financial goal and return HTML visualization"""
     try:
-        # Convert inputs to float/int if they're not already
+        # Convert inputs to float/int if they're not already and ensure they're valid
         goal_amount = float(goal_amount)
         time_frame_months = int(time_frame_months)
         current_savings = float(current_savings)
         
-        remaining_amount = goal_amount - current_savings
-        monthly_savings = remaining_amount / time_frame_months
+        # Validate inputs to ensure they're reasonable
+        if goal_amount <= 0:
+            raise ValueError("Goal amount must be greater than zero")
+        if time_frame_months <= 0:
+            raise ValueError("Time frame must be greater than zero")
+        if current_savings < 0:
+            raise ValueError("Current savings cannot be negative")
+        if current_savings >= goal_amount:
+            # Goal already achieved
+            monthly_savings = 0
+        else:
+            remaining_amount = goal_amount - current_savings
+            monthly_savings = remaining_amount / time_frame_months
+        
+        # Create data for the graph
+        months = list(range(0, time_frame_months + 1))
+        savings_progression = [current_savings + (monthly_savings * i) for i in months]
+        
+        
+        # Generate dashboard HTML with rounded values to avoid precision issues
+        dashboard_html = generate_dashboard(
+                goal="Saving Plan",
+                duration=time_frame_months,
+                amount=goal_amount,
+            )
+        with open("./dashboard_filled.html", "w") as file:
+            file.write(dashboard_html)
+
+
+            # Continue even if dashboard generation fails
         
         # Create a simplified HTML visualization
-        
-
         html = f"""
+        
         <div class="savings-plan bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
             <div class="flex justify-between items-center mb-4">
                 <div class="text-lg font-semibold text-gray-900">{goal}</div>
-                <div class="text-sm font-medium text-blue-600">${goal_amount:,.2f}</div>
+                <div class="text-sm font-medium text-blue-600">€{goal_amount:,.2f}</div>
             </div>
             
             <div class="grid grid-cols-2 gap-4 mb-4">
@@ -60,14 +88,14 @@ def calculate_savings_plan(goal_amount, time_frame_months, goal="Savings Plan Tr
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg">
                     <div class="text-sm text-gray-600">Current Savings</div>
-                    <div class="text-lg font-medium text-gray-900">${current_savings:,.2f}</div>
+                    <div class="text-lg font-medium text-gray-900">€{current_savings:,.2f}</div>
                 </div>
             </div>
             
             <div class="mb-4">
                 <div class="flex justify-between mb-1">
                     <div class="text-sm font-medium text-gray-600">Monthly Savings Target</div>
-                    <div class="text-sm font-medium text-blue-600">${monthly_savings:,.2f}</div>
+                    <div class="text-sm font-medium text-blue-600">€{monthly_savings:,.2f}</div>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
                     <div class="bg-blue-600 h-2.5 rounded-full" style="width: {min(100, round((current_savings / goal_amount) * 100))}%"></div>
@@ -75,32 +103,99 @@ def calculate_savings_plan(goal_amount, time_frame_months, goal="Savings Plan Tr
                 <div class="text-xs text-gray-500 mt-1">{min(100, round((current_savings / goal_amount) * 100))}% of goal</div>
             </div>
             
+            <!-- Savings Progression Graph -->
+            <div class="mt-6 mb-4">
+                <div class="text-sm font-medium text-gray-900 mb-2">Savings Progression</div>
+                <div class="relative h-64 w-full bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <!-- Graph container -->
+                    <div class="absolute inset-0 p-6">
+                        <!-- X and Y axes -->
+                        <div class="absolute bottom-0 left-0 right-8 border-t-2 border-gray-300"></div>
+                        <div class="absolute bottom-0 left-0 top-0 border-r-2 border-gray-300"></div>
+                        
+                        <!-- X-axis labels (months) -->
+                        <div class="absolute -bottom-6 left-0 right-8 flex justify-between">
+                            <span class="text-xs font-medium text-gray-700">0</span>
+                            <span class="text-xs font-medium text-gray-700">{time_frame_months//2}</span>
+                            <span class="text-xs font-medium text-gray-700">{time_frame_months}</span>
+                        </div>
+                        <div class="absolute -bottom-12 left-0 right-8 text-center">
+                            <span class="text-xs font-medium text-gray-700">Months</span>
+                        </div>
+                        
+                        <!-- Y-axis labels (amounts) -->
+                        <div class="absolute -left-14 bottom-0 top-0 flex flex-col justify-between items-end">
+                            <span class="text-xs font-medium text-gray-700">€{goal_amount:,.0f}</span>
+                            <span class="text-xs font-medium text-gray-700">€{current_savings + (remaining_amount/2 if 'remaining_amount' in locals() else 0):,.0f}</span>
+                            <span class="text-xs font-medium text-gray-700">€{current_savings:,.0f}</span>
+                        </div>
+                        
+                        <!-- Add vertical grid lines -->
+                        <svg class="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        {' '.join([f'<line x1="{(i/time_frame_months)*100}" y1="0" x2="{(i/time_frame_months)*100}" y2="100" stroke="#f0f0f0" stroke-width="1" />' for i in range(1, time_frame_months) if i % max(1, time_frame_months//4) == 0])}
+                        
+                        <!-- Add horizontal grid lines -->
+                        {' '.join([f'<line x1="0" y1="{25*i}" x2="100" y2="{25*i}" stroke="#f0f0f0" stroke-width="1" />' for i in range(1, 4)])}
+                        </svg>
+                        
+                        <!-- Savings line graph -->
+                        <svg class="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                            <!-- Savings progression line with smoothed curve -->
+                            <path 
+                                d="{' '.join(['M' + ' '.join([f'{(i/time_frame_months)*100},{100 - ((val/goal_amount)*65)}' for i, val in enumerate(savings_progression)])])}" 
+                                fill="none" 
+                                stroke="#3b82f6" 
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            
+                            <!-- Area under the progression line (gradient fill) -->
+                            <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.2" />
+                                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.05" />
+                            </linearGradient>
+                            <path d="{' '.join([f'M0,100 L' + ' L'.join([f'{(i/time_frame_months)*100},{100 - ((val/goal_amount)*65)}' for i, val in enumerate(savings_progression)]) + f' L{100},100 Z'])}" fill="url(#areaGradient)" />
+                            
+                            <!-- Goal horizontal line with improved visibility -->
+                            <line x1="0" y1="35" x2="100" y2="35" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4" />
+                            <text x="97" y="32" text-anchor="end" font-size="8" fill="#10b981" font-weight="bold">Goal: €{goal_amount:,.2f}</text>
+                            
+                            <!-- Data points - smaller and fewer points for cleaner appearance -->
+                            {' '.join([f'<circle cx="{(i/time_frame_months)*100}" cy="{100 - ((val/goal_amount)*65)}" r="2.5" fill="#3b82f6" stroke="white" stroke-width="1.5" />' for i, val in enumerate(savings_progression) if i % max(1, time_frame_months//3) == 0])}
+                            
+                            <!-- Current position indicator -->
+                            <circle cx="0" cy="{100 - ((current_savings/goal_amount)*65)}" r="3.5" fill="#3b82f6" stroke="white" stroke-width="1.5" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
             <div class="border-t border-gray-200 pt-4">
                 <div class="text-sm font-medium text-gray-900 mb-2">Savings Projection</div>
                 <div class="flex items-center">
                     <div class="flex-1 flex items-center">
                         <div class="w-3 h-3 rounded-full bg-blue-600 mr-2"></div>
-                        <div class="text-xs text-gray-600">Now: ${current_savings:,.2f}</div>
+                        <div class="text-xs text-gray-600">Now: €{current_savings:,.2f}</div>
                     </div>
                     <div class="flex-1 text-center">
                         <div class="text-xs text-gray-600">→</div>
                     </div>
                     <div class="flex-1 flex items-center justify-end">
-                        <div class="text-xs text-gray-600">Goal: ${goal_amount:,.2f}</div>
+                        <div class="text-xs text-gray-600">Goal: €{goal_amount:,.2f}</div>
                         <div class="w-3 h-3 rounded-full bg-green-600 ml-2"></div>
                     </div>
                 </div>
             </div>
         </div>
         """
-        #html = generate_dashboard(goal=goal, amount=goal_amount, duration=time_frame_months)
         
         # Save the goal to persistent storage
         goal_data = {
-            "goal_amount": goal_amount,
+            "goal_amount": round(goal_amount, 2),
             "time_frame_months": time_frame_months,
-            "current_savings": current_savings,
-            "monthly_savings": monthly_savings
+            "current_savings": round(current_savings, 2),
+            "monthly_savings": round(monthly_savings, 2)
         }
         save_goal(goal_data)
         
@@ -226,8 +321,14 @@ def tab_goal_plan():
         
         # Wrap the goal plan content in the app-content div
         return Div(id="app-content", cls="flex-1 flex flex-col overflow-hidden")(
-            # Create new goal button
-            Div(cls="flex justify-end p-4")(
+            # Header with buttons
+            Div(cls="flex justify-between p-4 sticky top-0 bg-white z-10 border-b border-gray-100")(
+                Button("Open Interactive Dashboard", 
+                    cls="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center",
+                    onclick="window.open('/dashboard', '_blank')")(
+                    Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" /></svg>'),
+                    "Open Dashboard"
+                ),
                 Button("Create New Goal", 
                     cls="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm",
                     hx_get="/tab/goal_setting",
@@ -236,56 +337,59 @@ def tab_goal_plan():
                     hx_push_url="false")
             ),
             
-            # Latest goal visualization
-            Div(cls="p-4 mb-6")(
-                Div(cls="flex justify-between items-center mb-4")(
-                    Div(cls="text-lg font-semibold text-neutral-dark")("Your Latest Savings Plan"),
-                    Div(cls="text-xs text-gray-500")("Created on " + datetime.fromisoformat(latest_goal.get("created_at", datetime.now().isoformat())).strftime("%b %d, %Y"))
-                ),
-                Raw(latest_plan_visualization),
-                Div(cls="text-xs text-neutral-medium mt-4")("All your goals are saved automatically.")
-            ) if latest_goal else Div(),
-            
-            # List of all goals with delete functionality
-            Div(cls="p-4 border-t border-gray-200")(
-                Div(cls="text-md font-semibold mb-3 text-gray-900")("All Your Goals"),
-                *[Div(cls="bg-white rounded-lg p-4 mb-3 border border-gray-200 shadow-sm")(
-                    Div(cls="flex justify-between items-center")(
-                        Div(cls="font-medium text-gray-900")("Goal #" + str(goal.get("id", i+1))),
-                        Div(cls="flex items-center")(
-                            Div(cls="text-xs text-gray-500 mr-3")(datetime.fromisoformat(goal.get("created_at", datetime.now().isoformat())).strftime("%b %d, %Y at %H:%M")),
-                            Button(
-                                Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>'),
-                                cls="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50",
-                                hx_post="/delete_goal",
-                                hx_vals=f'{{"goal_id": {goal.get("id", i+1)}}}',
-                                hx_target="#app-content",
-                                hx_swap="outerHTML",
-                                hx_confirm=f"Are you sure you want to delete Goal #{goal.get('id', i+1)}?",
+            # Scrollable content area
+            Div(cls="flex-1 overflow-y-auto")(
+                # Latest goal visualization
+                Div(cls="p-4 mb-6")(
+                    Div(cls="flex justify-between items-center mb-4")(
+                        Div(cls="text-lg font-semibold text-neutral-dark")("Your Latest Savings Plan"),
+                        Div(cls="text-xs text-gray-500")("Created on " + datetime.fromisoformat(latest_goal.get("created_at", datetime.now().isoformat())).strftime("%b %d, %Y"))
+                    ),
+                    Raw(latest_plan_visualization),
+                    Div(cls="text-xs text-neutral-medium mt-4")("All your goals are saved automatically.")
+                ) if latest_goal else Div(),
+                
+                # List of all goals with delete functionality
+                Div(cls="p-4 border-t border-gray-200")(
+                    Div(cls="text-md font-semibold mb-3 text-gray-900")("All Your Goals"),
+                    *[Div(cls="bg-white rounded-lg p-4 mb-3 border border-gray-200 shadow-sm")(
+                        Div(cls="flex justify-between items-center")(
+                            Div(cls="font-medium text-gray-900")("Goal #" + str(goal.get("id", i+1))),
+                            Div(cls="flex items-center")(
+                                Div(cls="text-xs text-gray-500 mr-3")(datetime.fromisoformat(goal.get("created_at", datetime.now().isoformat())).strftime("%b %d, %Y at %H:%M")),
+                                Button(
+                                    Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>'),
+                                    cls="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50",
+                                    hx_post="/delete_goal",
+                                    hx_vals=f'{{"goal_id": {goal.get("id", i+1)}}}',
+                                    hx_target="#app-content",
+                                    hx_swap="outerHTML",
+                                    hx_confirm=f"Are you sure you want to delete Goal #{goal.get('id', i+1)}?",
+                                )
                             )
-                        )
-                    ),
-                    Div(cls="grid grid-cols-2 gap-2 mt-2")(
-                        Div(cls="text-xs text-gray-600")("Goal Amount:"),
-                        Div(cls="text-xs font-medium text-gray-900")(f"${goal['goal_amount']:,.2f}"),
-                        
-                        Div(cls="text-xs text-gray-600")("Time Frame:"),
-                        Div(cls="text-xs font-medium text-gray-900")(f"{goal['time_frame_months']} months"),
-                        
-                        Div(cls="text-xs text-gray-600")("Monthly Savings:"),
-                        Div(cls="text-xs font-medium text-gray-900")(f"${goal['monthly_savings']:,.2f}"),
-                        
-                        Div(cls="text-xs text-gray-600")("Current Savings:"),
-                        Div(cls="text-xs font-medium text-gray-900")(f"${goal.get('current_savings', 0):,.2f}")
-                    ),
-                    # View details button
-                    Button("View Details", 
-                        cls="mt-3 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium rounded transition-colors",
-                        hx_post="/view_goal",
-                        hx_vals=f'{{"goal_id": {goal.get("id", i+1)}}}',
-                        hx_target="#app-content",
-                        hx_swap="outerHTML")
-                ) for i, goal in enumerate(all_goals)]
+                        ),
+                        Div(cls="grid grid-cols-2 gap-2 mt-2")(
+                            Div(cls="text-xs text-gray-600")("Goal Amount:"),
+                            Div(cls="text-xs font-medium text-gray-900")(f"€{goal['goal_amount']:,.2f}"),
+                            
+                            Div(cls="text-xs text-gray-600")("Time Frame:"),
+                            Div(cls="text-xs font-medium text-gray-900")(f"{goal['time_frame_months']} months"),
+                            
+                            Div(cls="text-xs text-gray-600")("Monthly Savings:"),
+                            Div(cls="text-xs font-medium text-gray-900")(f"€{goal['monthly_savings']:,.2f}"),
+                            
+                            Div(cls="text-xs text-gray-600")("Current Savings:"),
+                            Div(cls="text-xs font-medium text-gray-900")(f"€{goal.get('current_savings', 0):,.2f}")
+                        ),
+                        # View details button
+                        Button("View Details", 
+                            cls="mt-3 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium rounded transition-colors",
+                            hx_post="/view_goal",
+                            hx_vals=f'{{"goal_id": {goal.get("id", i+1)}}}',
+                            hx_target="#app-content",
+                            hx_swap="outerHTML")
+                    ) for i, goal in enumerate(all_goals)]
+                )
             )
         )
 
@@ -332,51 +436,61 @@ def view_goal(goal_id:int):
     
     # Return the detailed view
     return Div(id="app-content", cls="flex-1 flex flex-col overflow-hidden")(
-        # Back button
-        Div(cls="flex justify-between items-center p-4")(
+        # Back button and actions - make it sticky
+        Div(cls="flex justify-between items-center p-4 sticky top-0 bg-white z-10 border-b border-gray-100")(
             Button("← Back to All Goals", 
                 cls="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors text-sm",
                 hx_get="/tab/goal_plan",
                 hx_target="#app-content",
                 hx_swap="outerHTML",
                 hx_push_url="false"),
-            Button(
-                Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>') + "Delete Goal",
-                cls="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm flex items-center",
-                hx_post="/delete_goal",
-                hx_vals=f'{{"goal_id": {goal_id}}}',
-                hx_target="#app-content",
-                hx_swap="outerHTML",
-                hx_confirm=f"Are you sure you want to delete Goal #{goal_id}?"
+            Div(cls="flex items-center gap-2")(
+                Button(cls="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm flex items-center",
+                    onclick="window.open('/dashboard', '_blank')")(
+                    Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" /></svg>'),
+                    "Open Dashboard"
+                ),
+                Button(cls="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors text-sm flex items-center",
+                    hx_post="/delete_goal",
+                    hx_vals=f'{{"goal_id": {goal_id}}}',
+                    hx_target="#app-content",
+                    hx_swap="outerHTML",
+                    hx_confirm=f"Are you sure you want to delete Goal #{goal_id}?")(
+                    Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>'),
+                    "Delete Goal"
+                )
             )
         ),
         
-        # Goal details header
-        Div(cls="p-4 mb-4")(
-            Div(cls="text-lg font-semibold mb-2 text-gray-900")(f"Goal #{goal_id} Details"),
-            Div(cls="text-xs text-gray-500")(f"Created on {datetime.fromisoformat(selected_goal.get('created_at', datetime.now().isoformat())).strftime('%b %d, %Y at %H:%M')}")
-        ),
-        
-        # Goal visualization
-        Div(cls="p-4 mb-6")(
-            Raw(goal_visualization)
-        ),
-        
-        # Progress statistics 
-        Div(cls="p-4 border-t border-gray-200")(
-            Div(cls="text-md font-semibold mb-3 text-gray-900")("Goal Progress"),
-            Div(cls="grid grid-cols-2 gap-4")(
-                Div(cls="bg-white rounded-lg p-4 border border-gray-200 shadow-sm")(
-                    Div(cls="text-sm text-gray-600")("Current Progress"),
-                    Div(cls="text-xl font-semibold text-blue-600 mt-1")(f"{min(100, round((current_savings / goal_amount) * 100))}%"),
-                    Div(cls="w-full bg-gray-200 rounded-full h-2.5 mt-2")(
-                        Div(cls=f"bg-blue-600 h-2.5 rounded-full", style=f"width: {min(100, round((current_savings / goal_amount) * 100))}%")
+        # Scrollable content area
+        Div(cls="flex-1 overflow-y-auto")(
+            # Goal details header
+            Div(cls="p-4 mb-4")(
+                Div(cls="text-lg font-semibold mb-2 text-gray-900")(f"Goal #{goal_id} Details"),
+                Div(cls="text-xs text-gray-500")(f"Created on {datetime.fromisoformat(selected_goal.get('created_at', datetime.now().isoformat())).strftime('%b %d, %Y at %H:%M')}")
+            ),
+            
+            # Goal visualization
+            Div(cls="p-4 mb-6")(
+                Raw(goal_visualization)
+            ),
+            
+            # Progress statistics 
+            Div(cls="p-4 border-t border-gray-200")(
+                Div(cls="text-md font-semibold mb-3 text-gray-900")("Goal Progress"),
+                Div(cls="grid grid-cols-2 gap-4")(
+                    Div(cls="bg-white rounded-lg p-4 border border-gray-200 shadow-sm")(
+                        Div(cls="text-sm text-gray-600")("Current Progress"),
+                        Div(cls="text-xl font-semibold text-blue-600 mt-1")(f"{min(100, round((current_savings / goal_amount) * 100))}%"),
+                        Div(cls="w-full bg-gray-200 rounded-full h-2.5 mt-2")(
+                            Div(cls=f"bg-blue-600 h-2.5 rounded-full", style=f"width: {min(100, round((current_savings / goal_amount) * 100))}%")
+                        )
+                    ),
+                    Div(cls="bg-white rounded-lg p-4 border border-gray-200 shadow-sm")(
+                        Div(cls="text-sm text-gray-600")("Time Remaining"),
+                        Div(cls="text-xl font-semibold text-blue-600 mt-1")(f"{time_frame_months} months"),
+                        Div(cls="text-xs text-gray-500 mt-2")(f"Target completion: {(datetime.fromisoformat(selected_goal.get('created_at', datetime.now().isoformat())) + datetime.timedelta(days=30*time_frame_months)).strftime('%b %Y')}")
                     )
-                ),
-                Div(cls="bg-white rounded-lg p-4 border border-gray-200 shadow-sm")(
-                    Div(cls="text-sm text-gray-600")("Time Remaining"),
-                    Div(cls="text-xl font-semibold text-blue-600 mt-1")(f"{time_frame_months} months"),
-                    Div(cls="text-xs text-gray-500 mt-2")(f"Target completion: {(datetime.fromisoformat(selected_goal.get('created_at', datetime.now().isoformat())) + datetime.timedelta(days=30*time_frame_months)).strftime('%b %Y')}")
                 )
             )
         )
@@ -810,6 +924,35 @@ def select_option(option:str, messages:list[str]=None):
         response_elements.append(OptionButtons(options))
     
     return tuple(response_elements)
+
+# Add an endpoint to serve the dashboard HTML file
+@app.get("/dashboard")
+def serve_dashboard():
+    try:
+        with open("./dashboard_filled.html", "r") as file:
+            content = file.read()
+        return HTMLResponse(content=content)
+    except FileNotFoundError:
+        # If the file doesn't exist, generate a default dashboard
+        goals = load_goals()
+        if goals:
+            latest_goal = goals[0]
+            goal_amount = latest_goal["goal_amount"]
+            time_frame_months = latest_goal["time_frame_months"]
+            current_savings = latest_goal.get("current_savings", 0)
+            monthly_savings = latest_goal["monthly_savings"]
+            
+            # Generate a new dashboard
+            dashboard_html = generate_dashboard(goal_amount, time_frame_months, current_savings, monthly_savings)
+            
+            # Save it to file
+            with open("./dashboard_filled.html", "w") as file:
+                file.write(dashboard_html)
+                
+            return HTMLResponse(content=dashboard_html)
+        else:
+            # No goals found, return a simple message
+            return HTMLResponse(content="<html><body><h1>No dashboard available</h1><p>Please create a goal first.</p></body></html>")
 
 # The main screen - entry point of the application
 @app.get

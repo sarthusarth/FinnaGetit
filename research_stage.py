@@ -16,18 +16,23 @@ from bunq.sdk.model.generated.endpoint import PaymentApiObject
 from bunq import Pagination
 
 from openai import OpenAI
-
+import json
 from config import NVIDIA_KEY
 
 api_context = ApiContext.restore("bunq_api_context.conf")
 BunqContext.load_api_context(api_context)
 
+import anthropic
+from config import ANTHROPIC_API_KEY
 
-
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+#model = "claude-3-7-sonnet-20250219"
+model = "claude-3-5-sonnet-20240620"
+"""
 client = OpenAI(
   base_url = "https://integrate.api.nvidia.com/v1",
   api_key = NVIDIA_KEY
-)
+)"""
 
 def get_scheduled_payments(monetary_account_id: int) -> int:
     return 200
@@ -36,7 +41,7 @@ def get_fixed_payments(monetary_account_id: int) -> int:
     """Return integer because fixed expenses cannot really be reduced """
     return 1000
 
-def get_variale_payments(monetary_account_id: int) -> dict:
+def get_variable_payments(monetary_account_id: int) -> dict:
     """Return categorized variable payments with sums by category"""
     # Get all payments for the monetary account
     pagination = Pagination()
@@ -86,18 +91,19 @@ def get_variale_payments(monetary_account_id: int) -> dict:
     """.format(str(breakdown))
     
     # Process with Llama 3.3 70B model
-    completion = client.chat.completions.create(
-        model="meta/llama-3.3-70b-instruct",
+    print("PROMPT", prompt)
+    completion = client.messages.create(
+        model=model,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.1,
-        top_p=0.7,
+        temperature=0.01,
+        top_p=0.95,
         max_tokens=1024
     )
-    
+    print("COMPLETION", completion)
     # Extract categorized results
     try:
         import json
-        response_text = completion.choices[0].message.content
+        response_text = completion.content[0].text
         
         # Try to extract JSON if there's other text
         if "```json" in response_text:
@@ -109,14 +115,14 @@ def get_variale_payments(monetary_account_id: int) -> dict:
         
         # Clean any remaining non-JSON text
         response_text = response_text.strip()
-        if response_text.startswith('```') and response_text.endswith('```'):
-            response_text = response_text[3:-3].strip()
+        #if response_text.startswith('```') and response_text.endswith('```'):
+        #    response_text = response_text[3:-3].strip()
             
         result = json.loads(response_text)
         return result
     except Exception as e:
         # Fallback if parsing fails
-        print("PARSING FAILED", completion.choices[0].message.content, "ERROR", e)
+        print("PARSING FAILED", completion.content[0].text, "ERROR", e)
         return {
             "restaurants": 0,
             "groceries": 0,
@@ -158,7 +164,7 @@ def research_stage(goal: str, duration: int, amount: float, monetary_account_id:
 
     print("MAKING BUNQ API CALLS AND LLM ANALYSIS")
     fixed_payments = get_fixed_payments(monetary_account_id)
-    variable_payments = get_variale_payments(monetary_account_id)
+    variable_payments = get_variable_payments(monetary_account_id)
     scheduled_payments = get_scheduled_payments(monetary_account_id)
 
     print("GETTING SLIDER POSITIONS")
@@ -247,62 +253,36 @@ def get_slider_positions(duration: int, amount: float, variable_payments: dict, 
     """
     
     # Process with LLM
-    completion = client.chat.completions.create(
-        model="meta/llama-3.3-70b-instruct",
+    completion = client.messages.create(
+        model=model,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-        top_p=0.7,
+        temperature=0.01,
+        top_p=0.95,
         max_tokens=1024
     )
-    
+    print("COMPLETION", completion)
+    response_text = completion.content[0].text
+    print("RESPONSE TEXT", response_text)
+    json_match = json.loads(response_text)
+    print("JSON MATCH", json_match)
+
     # Extract recommended reduction percentages
-    try:
-        import json
-        import re
-        
-        response_text = completion.choices[0].message.content
-        
-        # Try to extract JSON if there's other text
-        if "```json" in response_text:
-            json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
-            if json_match:
-                response_text = json_match.group(1)
-        
-        # Clean any remaining non-JSON text
-        response_text = response_text.strip()
-        if response_text.startswith('```') and response_text.endswith('```'):
-            response_text = response_text[3:-3].strip()
-            
-        reductions = json.loads(response_text)
-        
-        # Convert reduction percentages to slider positions (0-100)
-        # Where 0 means no reduction (full spending) and 100 means maximum reduction
-        slider_positions = {}
-        percent_decrease_per_category = {}
-        for category, percentage in reductions.items():
-            if category in variable_payments:
-                # Ensure percentage is between 0-100
-                percentage = max(0, min(100, float(percentage)))
+    slider_positions = {}
+    percent_decrease_per_category = {}
+    for category, percentage in json_match.items():
+        if category in variable_payments:
+            # Ensure percentage is between 0-100
+            percentage = max(0, min(100, float(percentage)))
                 # Calculate slider position based on percentage, get absolute value of the amount
-                slider_positions[category] = abs(variable_payments[category] - variable_payments[category] * percentage / 100)
-                percent_decrease_per_category[category] = percentage
+            slider_positions[category] = abs(variable_payments[category] - variable_payments[category] * percentage / 100)
+            percent_decrease_per_category[category] = percentage
         # Ensure all categories from variable_expenses are included
-        for category in variable_payments:
+    for category in variable_payments:
             if category not in slider_positions:
                 slider_positions[category] = 0
                 
-        return slider_positions, percent_decrease_per_category
-        
-    except Exception as e:
-        print("PARSING FAILED", completion.choices[0].message.content, "ERROR", e)
-        # Fallback with default recommendations based on category type
-        return {
-            "restaurants": 50,  # Luxury - higher reduction
-            "groceries": 10,    # Essential - lower reduction
-            "coffee": 70,       # Luxury - higher reduction
-            "shopping": 40,     # Moderate reduction
-            "other": 30         # Moderate reduction
-        }
+    return slider_positions, percent_decrease_per_category
+    
 
 
 
@@ -317,16 +297,16 @@ def get_plan_description(full_info_for_result: str) -> str:
         str: Generated plan description
     """
     # Process with LLM to generate plan description
-    completion = client.chat.completions.create(
-        model="meta/llama-3.3-70b-instruct",
+    completion = client.messages.create(
+        model=model,
         messages=[{"role": "user", "content": full_info_for_result}],
         temperature=0.7,
         top_p=0.9,
         max_tokens=800
     )
     
-    # Extract generated description
-    return completion.choices[0].message.content.strip()
+    # Extract generated description - using OpenAI client structure here
+    return completion.content[0].text.strip()
 
 
 
