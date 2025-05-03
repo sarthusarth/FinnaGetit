@@ -69,5 +69,14 @@ Step 1: Goal definition
 
 
 
-### API connection 
+### TODO: 
 
+- [ ] integrate Sarthek's and my components
+- [ ] actually get per months data
+- [ ] Get currency for account data
+- [ ] Complete Bunq integration 
+    - [ ] Scheduled payments etc
+- [ ] Complete dashboard
+- [ ] Fine tune
+- [ ] Diagrams (communication, include NVIDIA search integration that was proposed) - explain what components are hardcoded
+- [ ] Production demo

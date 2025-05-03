@@ -8,6 +8,10 @@ __pycache__/
 # C extensions
 *.so
 
+config.py
+*.conf
+.sesskey
+
 # Distribution / packaging
 .Python
 build/
