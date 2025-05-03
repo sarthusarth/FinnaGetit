@@ -4,7 +4,7 @@ from research_stage import research_stage
 
 CURRENCY = "EUR" # Get from monetary account OR USD
 
-def generate_dashboard(goal, duration, amount, monetary_account_id):
+def generate_dashboard(goal, duration, amount, monetary_account_id=2108197):
     """
     Runs the research_stage function and generates an HTML dashboard with the results.
     Args:
