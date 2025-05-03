@@ -6,37 +6,5 @@
     "monthly_savings": 250.0,
     "created_at": "2025-05-03T12:01:44.123863",
     "id": 1
-  },
-  {
-    "goal_amount": 3000.0,
-    "time_frame_months": 12,
-    "current_savings": 0.0,
-    "monthly_savings": 250.0,
-    "created_at": "2025-05-03T12:01:55.385623",
-    "id": 2
-  },
-  {
-    "goal_amount": 9000.0,
-    "time_frame_months": 12,
-    "current_savings": 0.0,
-    "monthly_savings": 750.0,
-    "created_at": "2025-05-03T12:34:11.619137",
-    "id": 3
-  },
-  {
-    "goal_amount": 3000.0,
-    "time_frame_months": 12,
-    "current_savings": 0.0,
-    "monthly_savings": 250.0,
-    "created_at": "2025-05-03T12:34:21.265252",
-    "id": 4
-  },
-  {
-    "goal_amount": 3000.0,
-    "time_frame_months": 12,
-    "current_savings": 0.0,
-    "monthly_savings": 250.0,
-    "created_at": "2025-05-03T12:34:30.460043",
-    "id": 5
   }
 ]
