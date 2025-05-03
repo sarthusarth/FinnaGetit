@@ -1,10 +1,10 @@
 [
   {
     "id": 1,
-    "goal_amount": 3000.0,
-    "time_frame_months": 12,
+    "goal_amount": 2500.0,
+    "time_frame_months": 6,
     "current_savings": 0.0,
-    "monthly_savings": 250.0,
-    "created_at": "2025-05-03T14:28:53.545415"
+    "monthly_savings": 416.67,
+    "created_at": "2025-05-03T14:44:10.160581"
   }
 ]

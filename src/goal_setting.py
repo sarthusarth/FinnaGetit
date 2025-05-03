@@ -202,7 +202,7 @@ def handle_tab_switch(active_tab="goal_setting"):
 # Tab content for Goal Setting
 @app.get("/tab/goal_setting")
 def tab_goal_setting():
-    return Div(id="app-content", cls="flex-1 flex flex-col overflow-hidden")(
+    return Div(id="app-content", cls="flex-1 flex flex-col overflow-auto")(
         Form(hx_post=send, hx_target="#chatlist", hx_swap="beforeend", cls="flex-1 flex flex-col h-full")(
             # Messages area
             Div(id="chatlist", cls="flex-1 overflow-y-auto px-2 py-4 space-y-2"),
@@ -221,9 +221,9 @@ def tab_goal_plan():
     
     # Default content if no goal has been created yet
     if not all_goals:
-        return Div(id="app-content", cls="flex-1 flex flex-col overflow-hidden")(
+        return Div(id="app-content", cls="flex-1 flex flex-col overflow-auto")(
             Div(cls="flex flex-col items-center justify-center p-10 text-center h-64 bg-white rounded-lg shadow border border-gray-200 m-4")(
-                Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-gray-500 mb-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>'),
+                Raw('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-gray-500 mb-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l .415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>'),
                 Div(cls="text-xl font-semibold text-gray-800 mb-3")("No Goal Created Yet"),
                 Div(cls="text-gray-600 max-w-md")("Chat with the AI assistant in the Goal Setting tab to create your financial plan. Set a savings goal and timeframe to visualize your path to success."),
                 Button("Go to Goal Setting", 
@@ -251,7 +251,7 @@ def tab_goal_plan():
         )
         
         # Simplified UI for demo mode with a single goal
-        return Div(id="app-content", cls="flex-1 flex flex-col overflow-hidden")(
+        return Div(id="app-content", cls="flex-1 flex flex-col overflow-auto")(
             # Header with buttons
             Div(cls="flex justify-end p-4 sticky top-0 bg-white z-10 border-b border-gray-100")(
                 Div(cls="flex items-center gap-2")(
@@ -286,21 +286,29 @@ def tab_goal_plan():
                 # Goal details in a nice format
                 Div(cls="bg-white rounded-lg p-4 mt-4 border border-gray-200 shadow-sm")(
                     Div(cls="text-xl font-bold mb-4 text-gray-800 border-b pb-2")("Goal Details"),
-                    Div(cls="grid grid-cols-2 gap-3 mb-4")(
-                        Div(cls="text-sm text-gray-600")("Goal Amount:"),
-                        Div(cls="text-sm font-medium text-gray-900")(f"€{goal['goal_amount']:,.2f}"),
-                        
-                        Div(cls="text-sm text-gray-600")("Time Frame:"),
-                        Div(cls="text-sm font-medium text-gray-900")(f"{goal['time_frame_months']} months"),
-                        
-                        Div(cls="text-sm text-gray-600")("Monthly Savings:"),
-                        Div(cls="text-sm font-medium text-gray-900")(f"€{goal['monthly_savings']:,.2f}"),
-                        
-                        Div(cls="text-sm text-gray-600")("Current Savings:"),
-                        Div(cls="text-sm font-medium text-gray-900")(f"€{goal.get('current_savings', 0):,.2f}"),
-                        
-                        Div(cls="text-sm text-gray-600")("Progress:"),
-                        Div(cls="text-sm font-medium text-gray-900")(f"{min(100, round((current_savings / goal_amount) * 100))}%")
+                    Div(cls="mb-4")(
+                        Table(cls="w-full")(
+                            Tr(
+                                Td(cls="py-2 pl-0 pr-4 text-sm text-gray-600 font-medium w-1/3")("Goal Amount:"),
+                                Td(cls="py-2 px-2 text-sm font-medium text-gray-900")(f"€{goal['goal_amount']:,.2f}")
+                            ),
+                            Tr(
+                                Td(cls="py-2 pl-0 pr-4 text-sm text-gray-600 font-medium")("Time Frame:"),
+                                Td(cls="py-2 px-2 text-sm font-medium text-gray-900")(f"{goal['time_frame_months']} months")
+                            ),
+                            Tr(
+                                Td(cls="py-2 pl-0 pr-4 text-sm text-gray-600 font-medium")("Monthly Savings:"),
+                                Td(cls="py-2 px-2 text-sm font-medium text-gray-900")(f"€{goal['monthly_savings']:,.2f}")
+                            ),
+                            Tr(
+                                Td(cls="py-2 pl-0 pr-4 text-sm text-gray-600 font-medium")("Current Savings:"),
+                                Td(cls="py-2 px-2 text-sm font-medium text-gray-900")(f"€{goal.get('current_savings', 0):,.2f}")
+                            ),
+                            Tr(
+                                Td(cls="py-2 pl-0 pr-4 text-sm text-gray-600 font-medium")("Progress:"),
+                                Td(cls="py-2 px-2 text-sm font-medium text-gray-900")(f"{min(100, round((current_savings / goal_amount) * 100))}%")
+                            )
+                        )
                     ),
                     # Add View more details button
                     Button("View Dashboard", 
