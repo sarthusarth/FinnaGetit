@@ -6,7 +6,11 @@
 
 ## 📸 Screenshots
 
-*Coming soon*
+![Goal Management](images/1.png)
+![Cost Plan](images/2.png)
+![Interactive Dashboard](images/3.png)
+![Goal Advice](images/4.png)
+
 
 ## ✨ Features
 
