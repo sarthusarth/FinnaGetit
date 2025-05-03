@@ -13,6 +13,12 @@ scheduled_expenses: {category_1: float, category_2: float, category_3: float},
 from bunq.sdk.context.api_context import ApiContext
 from bunq.sdk.context.bunq_context import BunqContext
 from bunq.sdk.model.generated.endpoint import PaymentApiObject
+# For fixed expenses
+from bunq.sdk.model.generated.endpoint import RequestResponseApiObject
+# For scheduled payments
+from bunq.sdk.model.generated.endpoint import SchedulePaymentApiObject
+from bunq.sdk.model.generated.object_ import AmountObject, PointerObject, PointerObject
+
 from bunq import Pagination
 
 from openai import OpenAI
@@ -35,11 +41,29 @@ client = OpenAI(
 )"""
 
 def get_scheduled_payments(monetary_account_id: int) -> int:
-    return 200
+
+    scheduled_payments = SchedulePaymentApiObject.list(monetary_account_id=2108197)
+
+    breakdown = []
+    total_amount = 0
+    for recurring_payment in scheduled_payments.value:
+        if recurring_payment.status == "ACTIVE":
+            breakdown.append({"amount": abs(float(recurring_payment.payment.amount.value)), "description": recurring_payment.payment.description, "recurence_unit": recurring_payment.schedule.recurrence_unit, "recurence_size": recurring_payment.schedule.recurrence_size})
+            total_amount += abs(float(recurring_payment.payment.amount.value))
+    return breakdown, total_amount
 
 def get_fixed_payments(monetary_account_id: int) -> int:
     """Return integer because fixed expenses cannot really be reduced """
-    return 1000
+    recurring_payments =  RequestResponseApiObject.list()
+
+    breakdown = []
+    total_amount = 0
+    for recurring_payment in recurring_payments.value:
+        total_amount += abs(float(recurring_payment.amount_inquired.value))
+        breakdown.append({"amount": abs(float(recurring_payment.amount_inquired.value)), "description": recurring_payment.description, "counterparty": recurring_payment.counterparty_alias.label_monetary_account.display_name})
+    return breakdown, total_amount
+
+
 
 def get_variable_payments(monetary_account_id: int) -> dict:
     """Return categorized variable payments with sums by category"""
@@ -163,9 +187,9 @@ def research_stage(goal: str, duration: int, amount: float, monetary_account_id:
     ).value
 
     print("MAKING BUNQ API CALLS AND LLM ANALYSIS")
-    fixed_payments = get_fixed_payments(monetary_account_id)
+    fixed_payments, total_fixed_payments = get_fixed_payments(monetary_account_id)
     variable_payments = get_variable_payments(monetary_account_id)
-    scheduled_payments = get_scheduled_payments(monetary_account_id)
+    scheduled_payments, total_scheduled_payments = get_scheduled_payments(monetary_account_id)
 
     print("GETTING SLIDER POSITIONS")
     # Get the slider positions ie, savings per category
@@ -180,9 +204,9 @@ def research_stage(goal: str, duration: int, amount: float, monetary_account_id:
     This user wants to save {amount} in {duration} months. That's around {amount / duration} per month.
 
     On a monthly basis the user has the following expenses:
-    - Fixed expenses: {fixed_payments}
-    - Variable expenses: {variable_payments}
-    - Scheduled payments: {scheduled_payments}
+    - Fixed expenses: Total: {total_fixed_payments}; Breakdown: {fixed_payments}
+    - Scheduled payments: Total: {total_scheduled_payments}; Breakdown: {scheduled_payments}
+    - Variable expenses: Breakdown: {variable_payments}
 
     Your proposed solution is to reduce the variable expenses by the following percentages:
     {percent_decrease_per_category}
@@ -190,7 +214,7 @@ def research_stage(goal: str, duration: int, amount: float, monetary_account_id:
     {slider_positions}
 
     Using all the information above the user will see a dashboard with their simulated savings accumulation. Your job is to accompany this dashboard
-    by justifying the various saving choices outlined above. If possible provide tips on the Fixed and Scheduled payments for additional savings.
+    by justifying the various saving choices outlined above. If possible provide tips on reducing the Fixed and Scheduled payments for additional savings.
     Explain to the user that the simulation includes some random variations based on their previous spending behaviours during similar months, to better reflect real-world spending patterns.
 
     Explain all this to the user very concisely but in a playfull and engaging way. Don't be too verbose. Remind the user that no one is perfect so they don't have to be and that
